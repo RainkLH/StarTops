@@ -1,0 +1,37 @@
+[Unit]
+Description=Startops 2.0 - Lightweight Ops Console
+Documentation=file:///opt/Startops/README.md
+After=network.target
+
+[Service]
+Type=simple
+User=Startops
+Group=Startops
+WorkingDirectory=/opt/Startops
+
+# 启动命令
+ExecStart=/usr/bin/python3 /opt/Startops/main.py
+
+# 自动重启
+Restart=on-failure
+RestartSec=10
+
+# 日志和缓冲
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=Startops
+
+# 进程管理
+KillMode=process
+KillSignal=SIGTERM
+
+# 超时时间
+TimeoutStartSec=30
+TimeoutStopSec=10
+
+# 资源限制
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

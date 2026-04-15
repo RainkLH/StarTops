@@ -1,0 +1,18 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 9393,
+    "debug": false,
+    "log_level": "INFO"
+  },
+  "database": {
+    "url": "sqlite:///regex_tool.db",
+    "pool_size": 10,
+    "timeout": 30
+  },
+  "features": {
+    "enable_cache": true,
+    "cache_ttl": 300,
+    "max_patterns": 100
+  }
+}

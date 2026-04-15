@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Startops 2.0 - 集群监控</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #f5f7fa;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 顶部状态栏 */
+        .top-status-bar {
+            height: 60px;
+            background: linear-gradient(135deg, #764ba2 0%, #4f3d54 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+
+        .status-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .service-name {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .service-name-icon {
+            margin-right: 8px;
+        }
+
+        .current-time {
+            font-size: 18px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            opacity: 0.95;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .node-count-value {
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+            font-weight: 500;
+            border-radius: 20px;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.35);
+            transform: translateY(-1px);
+        }
+
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+
+        .refresh-btn.refreshing {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .refresh-icon {
+            display: inline-block;
+            transition: transform 0.6s;
+        }
+
+        .refresh-btn.refreshing .refresh-icon {
+            animation: rotate 1s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Tab 容器 */
+        .tab-container {
+            margin-top: 60px;
+            height: calc(100vh - 60px);
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        /* Tab 头部 */
+        .tab-header {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+
+        .tab-header::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .tab-header::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .tab-header::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 2px;
+        }
+
+        .tab-item {
+            padding: 15px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-item:hover {
+            background: #e9ecef;
+            color: #212529;
+        }
+
+        .tab-item.active {
+            background: white;
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        .tab-item.current-node {
+            background: #e7f3ff;
+        }
+
+        .tab-item.current-node.active {
+            background: white;
+        }
+
+        .node-status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .node-status-indicator.healthy {
+            background: #28a745;
+            box-shadow: 0 0 4px #28a745;
+        }
+
+        .node-status-indicator.warning {
+            background: #ffc107;
+            box-shadow: 0 0 4px #ffc107;
+        }
+
+        .node-status-indicator.error {
+            background: #dc3545;
+            box-shadow: 0 0 4px #dc3545;
+        }
+
+        /* Tab 内容区 */
+        .tab-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tab-pane {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .tab-pane iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* 当前节点特殊样式 */
+        .current-node-badge {
+            background: #667eea;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 4px;
+        }
+
+        /* 加载状态 */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #666;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 错误提示 */
+        .error-message {
+            color: #dc3545;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* 确认弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .modal-message {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .modal-btn-cancel {
+            background: #f1f3f5;
+            color: #495057;
+        }
+
+        .modal-btn-cancel:hover {
+            background: #e9ecef;
+        }
+
+        .modal-btn-confirm {
+            background: #667eea;
+            color: white;
+        }
+
+        .modal-btn-confirm:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+
+        .modal-btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .modal-btn-danger:hover {
+            background: #c82333;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .top-status-bar {
+                padding: 0 15px;
+            }
+
+            .status-bar-left {
+                gap: 15px;
+            }
+
+            .service-name {
+                font-size: 16px;
+            }
+
+            .current-time {
+                font-size: 12px;
+            }
+
+            .tab-item {
+                padding: 12px 18px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部状态栏 -->
+    <header class="top-status-bar">
+        <div class="status-bar-left">
+            <div class="service-name">
+                <span class="service-name-icon">🌠</span>
+                <div style="display: flex; flex-direction: column;">
+                    <span >Startops 集群监控</span>
+                    <span style="font-size: 12px">始于启动，达于星顶 / Start the service, reach the stars</span>
+                </div>
+            </div>
+        </div>
+        <div class="status-bar-right">
+            <div class="current-time">
+                <span>⏰</span>
+                <span id="current-time">加载中...</span>
+            </div>
+            <button class="refresh-btn" id="refresh-btn" onclick="refreshNodes()">
+                <span>节点数:</span>
+                <span class="node-count-value" id="node-count">0</span>
+                <span class="refresh-icon"> 🔄</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Tab 容器 -->
+    <div class="tab-container">
+        <!-- Tab 头部 -->
+        <div class="tab-header" id="tab-header">
+            <!-- 当前节点 Tab（固定） -->
+            <div class="tab-item current-node active" data-tab="current" onclick="switchTab('current')">
+                <span class="node-status-indicator healthy"></span>
+                <span>当前节点</span>
+                <span class="current-node-badge">本机</span>
+            </div>
+            <!-- 其他节点 Tab（动态加载） -->
+        </div>
+
+        <!-- Tab 内容区 -->
+        <div class="tab-content" id="tab-content">
+            <!-- 当前节点内容（固定） -->
+            <div class="tab-pane active" data-pane="current">
+                <iframe src="/dashboard" title="当前节点监控"></iframe>
+            </div>
+            <!-- 其他节点内容（动态加载） -->
+        </div>
+    </div>
+
+    <!-- 确认弹窗 -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <div class="modal-title" id="modal-title">确认操作</div>
+            <div class="modal-message" id="modal-message">确定要执行此操作吗？</div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">取消</button>
+                <button class="modal-btn modal-btn-confirm" id="modal-confirm-btn">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 当前活动的 Tab
+        let activeTab = 'current';
+        
+        // 确认回调
+        let confirmCallback = null;
+
+        // 更新当前时间
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            document.getElementById('current-time').textContent = timeString;
+        }
+
+        // 显示确认弹窗
+        function showConfirm(title, message, onConfirm, isDanger = false) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.className = 'modal-btn modal-btn-confirm' + (isDanger ? ' modal-btn-danger' : '');
+            confirmBtn.textContent = '确定';
+            
+            confirmCallback = onConfirm;
+            
+            document.getElementById('modal-overlay').classList.add('show');
+        }
+
+        // 关闭确认弹窗
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('show');
+            confirmCallback = null;
+        }
+
+        // 确认按钮点击
+        document.getElementById('modal-confirm-btn').addEventListener('click', function() {
+            if (confirmCallback) {
+                confirmCallback();
+            }
+            closeModal();
+        });
+
+        // 切换 Tab
+        function switchTab(tabId) {
+            // 更新活动状态
+            activeTab = tabId;
+
+            // 更新 Tab 头部样式
+            document.querySelectorAll('.tab-item').forEach(item => {
+                if (item.dataset.tab === tabId) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+
+            // 更新 Tab 内容显示
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                if (pane.dataset.pane === tabId) {
+                    pane.classList.add('active');
+                } else {
+                    pane.classList.remove('active');
+                }
+            });
+        }
+
+        // 加载节点列表
+        async function loadNodes() {
+            try {
+                const response = await fetch('/api/nodes');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderNodes(data.nodes);
+                }
+            } catch (error) {
+                console.error('Failed to load nodes:', error);
+            }
+        }
+
+        // 渲染节点列表
+        function renderNodes(nodes) {
+            const tabHeader = document.getElementById('tab-header');
+            const tabContent = document.getElementById('tab-content');
+            
+            // 清除现有节点（保留当前节点）
+            tabHeader.querySelectorAll('.tab-item:not(.current-node)').forEach(item => item.remove());
+            tabContent.querySelectorAll('.tab-pane:not([data-pane="current"])').forEach(pane => pane.remove());
+            
+            // 更新节点计数
+            document.getElementById('node-count').textContent = nodes.length;
+            
+            // 添加节点 Tab
+            nodes.forEach(node => {
+                // 添加 Tab 头部
+                const tabItem = document.createElement('div');
+                tabItem.className = `tab-item ${node.is_current ? 'current-node' : ''}`;
+                tabItem.dataset.tab = node.node_id;
+                tabItem.innerHTML = `
+                    <span class="node-status-indicator ${node.status}"></span>
+                    <span>${node.node_name}</span>
+                    ${node.is_current ? '<span class="current-node-badge">本机</span>' : ''}
+                `;
+                tabItem.onclick = () => switchTab(node.node_id);
+                tabHeader.appendChild(tabItem);
+                
+                // 添加 Tab 内容
+                const tabPane = document.createElement('div');
+                tabPane.className = 'tab-pane';
+                tabPane.dataset.pane = node.node_id;
+                tabPane.innerHTML = `<iframe src="${node.url}" title="${node.node_name}"></iframe>`;
+                tabContent.appendChild(tabPane);
+            });
+        }
+
+        // 刷新节点
+        function refreshNodes() {
+            const btn = document.getElementById('refresh-btn');
+            if (btn.classList.contains('refreshing')) return;
+            
+            btn.classList.add('refreshing');
+            
+            loadNodes().then(() => {
+                setTimeout(() => {
+                    btn.classList.remove('refreshing');
+                }, 1000);
+            });
+        }
+
+        // 页面加载时初始化
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+        loadNodes();
+    </script>
+</body>
+</html>

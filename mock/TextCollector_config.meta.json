@@ -1,0 +1,81 @@
+{
+  "collector": {
+    "name": {
+      "label": "收集器名称",
+      "type": "string",
+      "required": true,
+      "description": "收集器的显示名称"
+    },
+    "version": {
+      "label": "版本号",
+      "type": "string",
+      "required": true,
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "版本号（格式：x.y.z）"
+    },
+    "enabled": {
+      "label": "启用状态",
+      "type": "boolean",
+      "required": false,
+      "description": "是否启用收集器"
+    }
+  },
+  "storage": {
+    "output_dir": {
+      "label": "输出目录",
+      "type": "string",
+      "required": true,
+      "description": "收集文件的输出目录"
+    },
+    "file_prefix": {
+      "label": "文件前缀",
+      "type": "string",
+      "required": false,
+      "description": "输出文件的名称前缀"
+    },
+    "max_file_size": {
+      "label": "最大文件大小",
+      "type": "number",
+      "required": false,
+      "min": 1024,
+      "description": "单个文件的最大字节数"
+    },
+    "rotate_count": {
+      "label": "轮转数量",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 100,
+      "description": "保留的轮转文件数量"
+    }
+  },
+  "filters": {
+    "min_length": {
+      "label": "最小长度",
+      "type": "number",
+      "required": false,
+      "min": 0,
+      "description": "收集文本的最小长度"
+    },
+    "max_length": {
+      "label": "最大长度",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "description": "收集文本的最大长度"
+    },
+    "encoding": {
+      "label": "编码格式",
+      "type": "select",
+      "required": false,
+      "options": ["utf-8", "gbk", "ascii"],
+      "description": "文本编码格式"
+    },
+    "exclude_patterns": {
+      "label": "排除模式",
+      "type": "array",
+      "required": false,
+      "description": "要排除的正则表达式模式列表"
+    }
+  }
+}
