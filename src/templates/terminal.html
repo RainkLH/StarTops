@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarTops - 网页终端</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #2a2a2a;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header .status {
+            font-size: 12px;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header .status.connected {
+            color: #00ff00;
+        }
+
+        .header .status.disconnected {
+            color: #ff4444;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header button {
+            background: #444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .header button:hover {
+            background: #555;
+            transform: translateY(-1px);
+        }
+
+        .header button.danger {
+            background: #dc3545;
+        }
+
+        .header button.danger:hover {
+            background: #c82333;
+        }
+
+        .terminal-container {
+            flex: 1;
+            padding: 15px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-output {
+            flex: 1;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .terminal-input-line {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .terminal-prompt {
+            color: #00ff00;
+            margin-right: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .info-bar {
+            background: #2a2a2a;
+            padding: 10px 20px;
+            font-size: 12px;
+            color: #888;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-bar-left {
+            display: flex;
+            gap: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* 滚动条样式 */
+        .terminal-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .terminal-output::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .terminal-output::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        .terminal-output::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* 光标闪烁 */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #00ff00;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+            margin-left: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <span>💻</span>
+            <span>网页终端</span>
+        </h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div class="status" id="connection-status">
+                <span>●</span>
+                <span id="status-text">未连接</span>
+            </div>
+            <div class="header-buttons">
+                <button onclick="clearTerminal()">🧹 清屏</button>
+                <button class="danger" onclick="disconnect()">❌ 断开</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="terminal-container">
+        <div class="terminal-output" id="terminal-output" onclick="focusInput()"></div>
+        <div class="terminal-input-line">
+            <span class="terminal-prompt">$</span>
+            <input type="text" class="terminal-input" id="terminal-input" autocomplete="off" spellcheck="false">
+            <span class="cursor"></span>
+        </div>
+    </div>
+
+    <div class="info-bar">
+        <div class="info-bar-left">
+            <div class="info-item">
+                <span>💡</span>
+                <span>提示：仅支持简单命令，请勿执行长时间运行的命令</span>
+            </div>
+            <div class="info-item">
+                <span>📊</span>
+                <span>输出限制 100 行</span>
+            </div>
+        </div>
+        <div class="info-item">
+            <span>⏱️</span>
+            <span>60 秒无操作自动断开</span>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        const output = document.getElementById('terminal-output');
+        const input = document.getElementById('terminal-input');
+        const statusEl = document.getElementById('connection-status');
+        const statusText = document.getElementById('status-text');
+
+        // 连接 WebSocket
+        function connect() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}/ws/terminal`);
+
+            ws.onopen = () => {
+                statusEl.className = 'status connected';
+                statusText.textContent = '已连接';
+                output.textContent += '[已连接到终端]\n';
+                output.textContent += '输入命令并按 Enter 执行\n';
+                output.textContent += '输入 "exit" 退出终端\n\n';
+                scrollToBottom();
+            };
+
+            ws.onmessage = (event) => {
+                output.textContent += event.data;
+                scrollToBottom();
+            };
+
+            ws.onclose = () => {
+                statusEl.className = 'status disconnected';
+                statusText.textContent = '已断开';
+                output.textContent += '\n\n[连接已断开]\n';
+                output.textContent += '点击"断开"按钮重新连接\n';
+                scrollToBottom();
+            };
+
+            ws.onerror = () => {
+                output.textContent += '\n[连接错误]\n';
+            };
+        }
+
+        // 发送命令
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && ws && ws.readyState === WebSocket.OPEN) {
+                const cmd = input.value;
+                
+                // 处理 exit 命令
+                if (cmd.toLowerCase() === 'exit') {
+                    output.textContent += '$ ' + cmd + '\n';
+                    output.textContent += '[终端已退出]\n';
+                    disconnect();
+                    input.value = '';
+                    return;
+                }
+                
+                // 发送命令
+                ws.send(cmd + '\n');
+                output.textContent += '$ ' + cmd + '\n';
+                input.value = '';
+                scrollToBottom();
+            }
+        });
+
+        // 清屏
+        function clearTerminal() {
+            output.textContent = '';
+            output.textContent += '[屏幕已清空]\n\n';
+            focusInput();
+        }
+
+        // 断开连接
+        function disconnect() {
+            if (ws) {
+                ws.close();
+            }
+            // 3 秒后自动重连
+            setTimeout(() => {
+                if (!ws || ws.readyState === WebSocket.CLOSED) {
+                    connect();
+                }
+            }, 3000);
+        }
+
+        // 聚焦输入框
+        function focusInput() {
+            input.focus();
+        }
+
+        // 滚动到底部
+        function scrollToBottom() {
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // 页面加载时连接
+        connect();
+
+        // 保持输入框聚焦
+        document.addEventListener('click', () => {
+            focusInput();
+        });
+
+        // 防止失去焦点
+        input.addEventListener('blur', () => {
+            setTimeout(() => {
+                if (document.activeElement !== input) {
+                    focusInput();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>

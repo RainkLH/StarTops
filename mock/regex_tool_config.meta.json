@@ -1,0 +1,77 @@
+{
+  "server": {
+    "host": {
+      "label": "服务器地址",
+      "type": "string",
+      "required": true,
+      "description": "监听的网络地址"
+    },
+    "port": {
+      "label": "端口号",
+      "type": "number",
+      "required": true,
+      "min": 1000,
+      "max": 65535,
+      "description": "服务监听端口"
+    },
+    "debug": {
+      "label": "调试模式",
+      "type": "boolean",
+      "required": false,
+      "description": "是否启用调试模式"
+    },
+    "log_level": {
+      "label": "日志级别",
+      "type": "select",
+      "required": false,
+      "options": ["DEBUG", "INFO", "WARNING", "ERROR"],
+      "description": "日志输出级别"
+    }
+  },
+  "database": {
+    "url": {
+      "label": "数据库连接",
+      "type": "string",
+      "required": true,
+      "description": "数据库连接 URL"
+    },
+    "pool_size": {
+      "label": "连接池大小",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 100,
+      "description": "数据库连接池大小"
+    },
+    "timeout": {
+      "label": "超时时间",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "description": "数据库操作超时时间（秒）"
+    }
+  },
+  "features": {
+    "enable_cache": {
+      "label": "启用缓存",
+      "type": "boolean",
+      "required": false,
+      "description": "是否启用缓存功能"
+    },
+    "cache_ttl": {
+      "label": "缓存过期时间",
+      "type": "number",
+      "required": false,
+      "min": 0,
+      "description": "缓存存活时间（秒）"
+    },
+    "max_patterns": {
+      "label": "最大正则模式数",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 1000,
+      "description": "允许保存的最大正则表达式模式数量"
+    }
+  }
+}
